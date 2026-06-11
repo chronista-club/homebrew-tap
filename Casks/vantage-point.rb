@@ -13,7 +13,7 @@ cask "vantage-point" do
   end
 
   depends_on arch: :arm64
-  depends_on macos: ">= :big_sur"
+  depends_on macos: :big_sur
 
   app "VantagePoint.app"
   # CLI (vp) は .app 内 (Contents/MacOS/vp) に同梱 → PATH へ symlink。
