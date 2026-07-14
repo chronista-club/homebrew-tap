@@ -26,22 +26,24 @@ cask "vantage-point" do
   # まま走り続けるため、明示的に再起動しないと新版が効かない (従来は手動で `vp daemon stop` が必要
   # だった)。
   #
-  # `kickstart -k` は job を落として起こし直す (KeepAlive と競合しない)。 LaunchAgent 未登録の
-  # 環境では `print` が失敗して何もしない — 手動起動派 / 未常駐の人を壊さない。
+  # 旧実装は `launchctl kickstart -k` を直叩きしていたが、これは launchd job 個体しか再起動
+  # できない。 app auto-launch した daemon 個体が port を握り、launchd job は二重起動ガードで
+  # 空回りしている「所有権分裂」状態では、kickstart は空回り個体を蹴るだけで実 daemon に届かず、
+  # upgrade しても version が上がらなかった (2026-07-14 に根本原因を特定)。
   #
-  # 注: launchd job の再起動は同 process group の SP も reap するため、daemon と SP の両方が
-  #     新 binary に載る (upgrade では望ましい挙動)。
+  # 代わりに #763 で入った ownership-agnostic な `vp daemon restart --if-running` を使う。
+  # 実 port holder を /api/health で特定 → graceful stop → LaunchAgent 優先で新 binary 起動、
+  # という所有権に依存しない再起動を行う。`--if-running` は daemon 不在なら no-op で抜けるので、
+  # 手動起動派 / 未常駐の人を壊さない (`must_succeed: false` で失敗も握り潰す)。
+  #
+  # vp binary は差し替え済みの新 .app 同梱実体を絶対 path で叩く (symlink 更新順に依存しない)。
+  # 注: daemon restart は同 process group の SP も入れ替わるため、daemon と SP の両方が新 binary
+  #     に載る (upgrade では望ましい挙動)。
   postflight do
-    label  = "club.chronista.vantage-point.daemon"
-    target = "gui/#{Process.uid}/#{label}"
+    vp = "#{appdir}/VantagePoint.app/Contents/MacOS/vp"
 
-    loaded = system_command("/bin/launchctl",
-                            args:         ["print", target],
-                            must_succeed: false).exit_status.zero?
-    next unless loaded
-
-    system_command "/bin/launchctl",
-                   args:         ["kickstart", "-k", target],
+    system_command vp,
+                   args:         ["daemon", "restart", "--if-running"],
                    must_succeed: false
   end
 
