@@ -1,6 +1,6 @@
 cask "vantage-point" do
-  version "0.50.0"
-  sha256 "6328acea2f395f08ec78994906d4c23a81a4b2bf3e11af930b21295816a017c0"
+  version "0.51.0"
+  sha256 "73a951af9534b77790d53db377f26420f79650b33b18b3e68f42f010d091ad5d"
 
   url "https://github.com/chronista-club/vantage-point/releases/download/v#{version}/VantagePoint-#{version}-arm64.dmg"
   name "Vantage Point"
